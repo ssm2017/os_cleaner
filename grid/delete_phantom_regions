@@ -55,7 +55,7 @@ for region in ${regions}; do
   response=$(curl --max-time 10 --retry 3 --retry-delay 5 --retry-max-time 50 --connect-timeout 5 --write-out %{http_code} --silent --output /dev/null ${region_uri_test})
   if [ ! ${response} -eq 200 ]; then
     ((failed_count++))
-    echo -e "$(/bin/date +%Y/%m/%d-%T) : Region named : \"${region_name}\" owned by \"${region_owner}\" is not responding at ${region_uri_test}. Response = ${response}" >> ${LOG_FILE}
+    echo -e "$(/bin/date +%Y/%m/%d-%T) : Region named : \"${region_name}\" owned by \"${region_owner_uuid}\" is not responding at ${region_uri_test}. Response = ${response}" >> ${LOG_FILE}
     $MYSQL --batch --skip-column-names -e "DELETE FROM ${DB_NAME}.regions WHERE uuid=${region_uuid}"
     # send an email to the owner to tell him/her
     echo "Your region named \"${region_name}\" was deleted on the grid because it is not responding. Please restart it if needed." | mail -s 'Region deleted on the grid' ${user_email}
