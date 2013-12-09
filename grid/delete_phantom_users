@@ -26,13 +26,10 @@ if [ ${result} -gt 0 ]; then
   lost_presence_items_query="SELECT UserID FROM ${db_name}.Presence WHERE RegionID = '00000000-0000-0000-0000-000000000000'"
   lost_presence_items="\""`$MYSQL --batch --skip-column-names -e "${lost_presence_items_query}" | tr '\n' ',' | sed 's/.$//' | sed 's/,/","/g'`"\""
   # delete items in tokens table
-  delete_token_entries="DELETE FROM ${db_name}.tokens WHERE UUID IN (${lost_presence_items})"
-  $MYSQL --batch --skip-column-names -e "${delete_token_entries}"
+  $MYSQL --batch --skip-column-names -e "DELETE FROM ${db_name}.tokens WHERE UUID IN (${lost_presence_items})"
   # delete items in Presence table
-  delete_presence_entries="DELETE FROM ${db_name}.Presence WHERE UserID IN (${lost_presence_items})"
-  $MYSQL --batch --skip-column-names -e "${delete_presence_entries}"
+  $MYSQL --batch --skip-column-names -e "DELETE FROM ${db_name}.Presence WHERE UserID IN (${lost_presence_items})"
   # set Online = False in GridUser
-  set_offline="UPDATE ${db_name}.GridUser SET Online = 'False' WHERE UserID IN (${lost_presence_items})"
-  $MYSQL --batch --skip-column-names -e "${set_offline}"
+  $MYSQL --batch --skip-column-names -e "UPDATE ${db_name}.GridUser SET Online = 'False' WHERE UserID IN (${lost_presence_items})"
 fi
 
