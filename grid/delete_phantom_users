@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# get some vars
+MYSQL=`which mysql`
+db_name="prod_grid"
+
+# start the log
+LOG_FOLDER="/var/log/opensim"
+LOG_FILE="${LOG_FOLDER}/delete_phantom_users.log"
+if [ ! -d ${LOG_FOLDER} ]; then
+  mkdir -p ${LOG_FOLDER}
+  if [ ! $? -eq 0 ]; then
+    exit 1;
+  fi
+fi
+echo -e "=============================" >> ${LOG_FILE}
+echo -e $(date +'%F') >> ${LOG_FILE}
+
+# count items
+count_lost_presence_query="SELECT count(*) FROM ${db_name}.Presence WHERE RegionID = '00000000-0000-0000-0000-000000000000'"
+result=`$MYSQL --batch --skip-column-names -e "${count_lost_presence_query}"`
+echo -e "$(/bin/date +%Y/%m/%d-%T) : ${result} phantom users found" >> ${LOG_FILE}
+
+if [ ${result} -gt 0 ]; then
+  # get presence items
+  lost_presence_items_query="SELECT UserID FROM ${db_name}.Presence WHERE RegionID = '00000000-0000-0000-0000-000000000000'"
+  lost_presence_items="\""`$MYSQL --batch --skip-column-names -e "${lost_presence_items_query}" | tr '\n' ',' | sed 's/.$//' | sed 's/,/","/g'`"\""
+  # delete items in tokens table
+  delete_token_entries="DELETE FROM ${db_name}.tokens WHERE UUID IN (${lost_presence_items})"
+  $MYSQL --batch --skip-column-names -e "${delete_token_entries}"
+  # delete items in Presence table
+  delete_presence_entries="DELETE FROM ${db_name}.Presence WHERE UserID IN (${lost_presence_items})"
+  $MYSQL --batch --skip-column-names -e "${delete_presence_entries}"
+  # set Online = False in GridUser
+  set_offline="UPDATE ${db_name}.GridUser SET Online = 'False' WHERE UserID IN (${lost_presence_items})"
+  $MYSQL --batch --skip-column-names -e "${set_offline}"
+fi
+

@@ -1,0 +1,26 @@
+#!/bin/bash
+
+# get some vars
+MYSQL=`which mysql`
+db_name="prod_grid"
+home_region_uuid="0bba06c3-1e61-427e-bc59-6b59f3c90563"
+
+# start the log
+LOG_FOLDER="/var/log/opensim"
+LOG_FILE="${LOG_FOLDER}/reset_home.log"
+if [ ! -d ${LOG_FOLDER} ]; then
+  mkdir -p ${LOG_FOLDER}
+  if [ ! $? -eq 0 ]; then
+    exit 1;
+  fi
+fi
+echo -e "=============================" >> ${LOG_FILE}
+echo -e $(date +'%F') >> ${LOG_FILE}
+
+# count items
+count_reset_home_query="SELECT count(*) FROM ${db_name}.GridUser WHERE LastRegionID = '00000000-0000-0000-0000-000000000000' OR HomeRegionID = '00000000-0000-0000-0000-000000000000'"
+result=`$MYSQL --batch --skip-column-names -e "${count_reset_home_query}"`
+echo -e "$(/bin/date +%Y/%m/%d-%T) : ${result} users did not have a good home region or last region uuid" >> ${LOG_FILE}
+
+$MYSQL --batch -e "UPDATE ${db_name}.GridUser SET LastRegionID='${home_region_uuid}' WHERE LastRegionID = '00000000-0000-0000-0000-000000000000'"
+$MYSQL --batch -e "UPDATE ${db_name}.GridUser SET HomeRegionID='${home_region_uuid}' WHERE HomeRegionID = '00000000-0000-0000-0000-000000000000'"

@@ -1,0 +1,43 @@
+#!/bin/bash
+
+# get some vars
+MYSQL=`which mysql`
+DB_NAME="prod_grid"
+checked_count=0
+failed_count=0
+
+# start the log
+LOG_FOLDER="/var/log/opensim"
+LOG_FILE="${LOG_FOLDER}/delete_phantom_regions.log"
+if [ ! -d ${LOG_FOLDER} ]; then
+  mkdir -p ${LOG_FOLDER}
+  if [ ! $? -eq 0 ]; then
+    exit 1;
+  fi
+fi
+echo -e "=============================" >> ${LOG_FILE}
+echo -e $(date +'%F') >> ${LOG_FILE}
+
+# get regions
+get_regions_query="SELECT concat(regionName, ';', uuid, ';', serverURI, ';', owner_uuid) FROM ${DB_NAME}.regions"
+regions=`$MYSQL --batch --skip-column-names -e "${get_regions_query}" | tr ' ' '_'`
+
+# check regions
+for region in ${regions}; do
+  ((checked_count++))
+  # get values
+  region_name=$(echo ${region} | cut -d ";" -f 1)
+  region_uuid=$(echo ${region} | cut -d ";" -f 2)
+  region_uri=$(echo ${region} | cut -d ";" -f 3)
+  region_owner=$(echo ${region} | cut -d ";" -f 4)
+  # run the test
+  region_uri_test="${region_uri}monitorstats/${region_uuid}"
+  response=$(curl --max-time 10 --retry 3 --retry-delay 5 --retry-max-time 50 --connect-timeout 5 --write-out %{http_code} --silent --output /dev/null ${region_uri_test})
+  if [ ! ${response} -eq 200 ]; then
+    ((failed_count++))
+    echo -e "$(/bin/date +%Y/%m/%d-%T) : Region named : \"${region_name}\" owned by \"${region_owner}\" is not responding at ${region_uri_test}. Response = ${response}" >> ${LOG_FILE}
+  fi
+done
+echo -e "$(/bin/date +%Y/%m/%d-%T) : Checked : ${checked_count}" >> ${LOG_FILE}
+echo -e "$(/bin/date +%Y/%m/%d-%T) : Failed : ${failed_count}" >> ${LOG_FILE}
+
