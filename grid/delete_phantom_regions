@@ -31,7 +31,7 @@ if [ ${orphaned_regions_count} -gt 0 ]; then
     region_uri=$(echo ${orphaned_region} | cut -d ";" -f 3)
     region_owner_uuid=$(echo ${orphaned_region} | cut -d ";" -f 4)
     echo -e "$(/bin/date +%Y/%m/%d-%T) : Orphaned region : Region named \"${region_name}\" owned by \"${region_owner_uuid}\" with uri at ${region_uri}" >> ${LOG_FILE}
-    $MYSQL --batch --skip-column-names -e "DELETE FROM ${DB_NAME}.regions WHERE uuid=${region_uuid}"
+    $MYSQL --batch --skip-column-names -e "DELETE FROM ${DB_NAME}.regions WHERE uuid=\"${region_uuid}\""
   done
 fi
 
@@ -56,7 +56,7 @@ for region in ${regions}; do
   if [ ! ${response} -eq 200 ]; then
     ((failed_count++))
     echo -e "$(/bin/date +%Y/%m/%d-%T) : Region named : \"${region_name}\" owned by \"${region_owner_uuid}\" is not responding at ${region_uri_test}. Response = ${response}" >> ${LOG_FILE}
-    $MYSQL --batch --skip-column-names -e "DELETE FROM ${DB_NAME}.regions WHERE uuid=${region_uuid}"
+    $MYSQL --batch --skip-column-names -e "DELETE FROM ${DB_NAME}.regions WHERE uuid=\"{region_uuid}\""
     # send an email to the owner to tell him/her
     echo "Your region named \"${region_name}\" was deleted on the grid because it is not responding. Please restart it if needed." | mail -s 'Region deleted on the grid' ${user_email}
   fi
