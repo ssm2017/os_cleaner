@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# exit on all error
+set -e
+
 # get some vars
 MYSQL=`which mysql`
 db_name="prod_grid"
@@ -14,13 +17,15 @@ if [ ! -d ${LOG_FOLDER} ]; then
     exit 1;
   fi
 fi
-echo -e "=============================" >> ${LOG_FILE}
-echo -e $(date +'%F') >> ${LOG_FILE}
 
 # count items
 count_reset_home_query="SELECT count(*) FROM ${db_name}.GridUser WHERE LastRegionID = '00000000-0000-0000-0000-000000000000' OR HomeRegionID = '00000000-0000-0000-0000-000000000000'"
 result=`$MYSQL --batch --skip-column-names -e "${count_reset_home_query}"`
-echo -e "$(/bin/date +%Y/%m/%d-%T) : ${result} users did not have a good home region or last region uuid" >> ${LOG_FILE}
+if [ ${result} -gt 0 ]; then
+  echo -e "=============================" >> ${LOG_FILE}
+  echo -e $(date +'%F') >> ${LOG_FILE}
+  echo -e "$(/bin/date +%Y/%m/%d-%T) : ${result} users did not have a good home region or last region uuid" >> ${LOG_FILE}
 
-$MYSQL --batch -e "UPDATE ${db_name}.GridUser SET LastRegionID='${home_region_uuid}' WHERE LastRegionID = '00000000-0000-0000-0000-000000000000'"
-$MYSQL --batch -e "UPDATE ${db_name}.GridUser SET HomeRegionID='${home_region_uuid}' WHERE HomeRegionID = '00000000-0000-0000-0000-000000000000'"
+  $MYSQL --batch -e "UPDATE ${db_name}.GridUser SET LastRegionID='${home_region_uuid}' WHERE LastRegionID = '00000000-0000-0000-0000-000000000000'"
+  $MYSQL --batch -e "UPDATE ${db_name}.GridUser SET HomeRegionID='${home_region_uuid}' WHERE HomeRegionID = '00000000-0000-0000-0000-000000000000'"
+fi

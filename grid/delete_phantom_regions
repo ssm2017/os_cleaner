@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# exit on all error
+set -e
+
 # get some vars
 MYSQL=`which mysql`
 DB_NAME="prod_grid"

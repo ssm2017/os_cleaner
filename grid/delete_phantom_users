@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# exit on all error
+set -e
+
 # get some vars
 MYSQL=`which mysql`
 db_name="prod_grid"
@@ -13,15 +16,15 @@ if [ ! -d ${LOG_FOLDER} ]; then
     exit 1;
   fi
 fi
-echo -e "=============================" >> ${LOG_FILE}
-echo -e $(date +'%F') >> ${LOG_FILE}
 
 # count items
 count_lost_presence_query="SELECT count(*) FROM ${db_name}.Presence WHERE RegionID = '00000000-0000-0000-0000-000000000000'"
 result=`$MYSQL --batch --skip-column-names -e "${count_lost_presence_query}"`
-echo -e "$(/bin/date +%Y/%m/%d-%T) : ${result} phantom users found" >> ${LOG_FILE}
 
 if [ ${result} -gt 0 ]; then
+  echo -e "=============================" >> ${LOG_FILE}
+  echo -e $(date +'%F') >> ${LOG_FILE}
+  echo -e "$(/bin/date +%Y/%m/%d-%T) : ${result} phantom users found" >> ${LOG_FILE}
   # get presence items
   lost_presence_items_query="SELECT UserID FROM ${db_name}.Presence WHERE RegionID = '00000000-0000-0000-0000-000000000000'"
   lost_presence_items="\""`$MYSQL --batch --skip-column-names -e "${lost_presence_items_query}" | tr '\n' ',' | sed 's/.$//' | sed 's/,/","/g'`"\""
@@ -32,4 +35,3 @@ if [ ${result} -gt 0 ]; then
   # set Online = False in GridUser
   $MYSQL --batch --skip-column-names -e "UPDATE ${db_name}.GridUser SET Online = 'False' WHERE UserID IN (${lost_presence_items})"
 fi
-
